@@ -5,11 +5,9 @@ import (
 	"bytes"
 	"encoding/csv"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -75,10 +73,10 @@ func main() {
 		switch {
 		case res.Valid && res.Status == 200:
 			err = resultWriter.Write([]string{res.URL, strconv.Itoa(res.Status), strconv.FormatBool(res.Valid), res.ErrorMsg})
-		case !res.Valid && strings.Contains(res.ErrorMsg, inactiveErrorMessage):
+		case !res.Valid:
 			err = resultsInactiveWriter.Write([]string{res.URL, strconv.Itoa(res.Status), strconv.FormatBool(res.Valid), res.ErrorMsg})
 		default:
-			err = resultWriter.Write([]string{res.URL, strconv.Itoa(res.Status), strconv.FormatBool(res.Valid), res.ErrorMsg})
+    		err = resultsInactiveWriter.Write([]string{res.URL, strconv.Itoa(res.Status), strconv.FormatBool(res.Valid), res.ErrorMsg})
 		}
 
 		if err != nil {

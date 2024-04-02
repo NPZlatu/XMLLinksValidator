@@ -5,12 +5,11 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"reflect"
 	"strings"
 )
 
 func main() {
-	xmlFile := "../Sitemap.xml"
+	xmlFile := "../sitemap.xml"
 	feedFile := "../feed.txt"
 	parentXmlNode := "url"
 
@@ -47,13 +46,35 @@ func main() {
 			}
 			// Extract URL from Sitemap
 			var xmlItemKey string
-			for _, attr := range t.Attr {
-				if attr.Name.Local == "loc" {
-					xmlItemKey = strings.TrimSpace(attr.Value)
-					break
+			for {
+				t, err := d.Token()
+				if err != nil {
+					if err == io.EOF {
+						break
+					}
+					panic(err)
+				}
+				switch t := t.(type) {
+				case xml.EndElement:
+					if t.Name.Local == "url" {
+						if xmlItemKey != "" {
+							uniqueLinks[xmlItemKey] = true
+						}
+						break
+					}
+				case xml.StartElement:
+					if t.Name.Local == "loc" {
+						// Extract URL
+						innerToken, err := d.Token()
+						if err != nil {
+							panic(err)
+						}
+						if charData, ok := innerToken.(xml.CharData); ok {
+							xmlItemKey = strings.TrimSpace(string(charData))
+						}
+					}
 				}
 			}
-			uniqueLinks[xmlItemKey] = true
 		}
 	}
 
