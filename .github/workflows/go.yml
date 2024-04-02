@@ -15,10 +15,12 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
-          go-version: "1.22.1"
+          go-version: "1.17" # Use the correct Go version
 
-      - name: Build
-        run: go build -v ./...
+      - name: Build txtchecker
+        working-directory: ./txtchecker
+        run: go build -v .
 
-      - name: Test
-        run: go test -v ./...
+      - name: Test txtchecker
+        working-directory: ./txtchecker
+        run: go test -v .
