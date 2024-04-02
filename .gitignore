@@ -1,3 +1,4 @@
 feed.txt
-success.csv
-errors.csv
+success-list.csv
+error-others-list.csv
+error-inactive-list.csv

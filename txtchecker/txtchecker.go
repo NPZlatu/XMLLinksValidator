@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -19,7 +20,6 @@ const (
 	inactiveErrorMessage = "product was not found"
 )
 
-
 func main() {
 	start := time.Now()
 	inFilename := "../feed.txt"
@@ -29,8 +29,9 @@ func main() {
 	}
 	defer inFile.Close()
 
-	resultsFilename := "../success.csv"
-	resultsFileInactivePageName := "../errors.csv"
+	resultsFilename := "../success-list.csv"
+	resultsFileInactivePageName := "../error-inactive-list.csv"
+	resultsFileErrorOthersName := "../error-others-list.csv"
 
 	resultsFile, err := os.Create(resultsFilename)
 	if err != nil {
@@ -43,6 +44,12 @@ func main() {
 		panic(err)
 	}
 	defer resultsFileInactive.Close()
+
+	resultsFileErrorOthers, err := os.Create(resultsFileErrorOthersName)
+	if err != nil {
+		panic(err)
+	}
+	defer resultsFileErrorOthers.Close()
 
 	taskChan := make(chan Task, 40000)
 	resultChan := make(chan Result, 40000)
@@ -67,16 +74,16 @@ func main() {
 
 	resultWriter := csv.NewWriter(resultsFile)
 	resultsInactiveWriter := csv.NewWriter(resultsFileInactive)
+	resultsErrorOthersWriter := csv.NewWriter(resultsFileErrorOthers)
 
 	for i := 0; i < count; i++ {
 		res := <-resultChan
-		switch {
-		case res.Valid && res.Status == 200:
+		if res.Valid && res.Status == 200 {
 			err = resultWriter.Write([]string{res.URL, strconv.Itoa(res.Status), strconv.FormatBool(res.Valid), res.ErrorMsg})
-		case !res.Valid:
+		} else if !res.Valid && strings.Contains(res.ErrorMsg, inactiveErrorMessage) {
 			err = resultsInactiveWriter.Write([]string{res.URL, strconv.Itoa(res.Status), strconv.FormatBool(res.Valid), res.ErrorMsg})
-		default:
-    		err = resultsInactiveWriter.Write([]string{res.URL, strconv.Itoa(res.Status), strconv.FormatBool(res.Valid), res.ErrorMsg})
+		} else {
+			err = resultsErrorOthersWriter.Write([]string{res.URL, strconv.Itoa(res.Status), strconv.FormatBool(res.Valid), res.ErrorMsg})
 		}
 
 		if err != nil {
@@ -89,11 +96,15 @@ func main() {
 	close(resultChan)
 	resultWriter.Flush()
 	resultsInactiveWriter.Flush()
+	resultsErrorOthersWriter.Flush()
 
 	if err = resultWriter.Error(); err != nil {
 		panic(err)
 	}
 	if err = resultsInactiveWriter.Error(); err != nil {
+		panic(err)
+	}
+	if err = resultsErrorOthersWriter.Error(); err != nil {
 		panic(err)
 	}
 
@@ -139,6 +150,7 @@ func checker(client *http.Client, t Task) Result {
 		result.ErrorMsg = err.Error()
 		return result
 	}
+	// Set the User-Agent header to "facebookexternalhit/1.1" to emulate Facebook's web crawler.
 	req.Header.Add("User-Agent", "facebookexternalhit/1.1")
 
 	res, err := client.Do(req)
